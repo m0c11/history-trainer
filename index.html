@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Исторический тренажёр</title>
+<style>
+:root{--p:#2563eb;--ph:#1d4ed8;--s:#16a34a;--e:#dc2626;--bg:#f1f5f9;--card:#fff;--t:#1e293b;--ts:#64748b}
+*{box-shadow:none;box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--t);line-height:1.5;padding:12px;min-height:100vh;display:flex;flex-direction:column;align-items:center}
+.wrap{width:100%;max-width:640px;background:var(--card);border-radius:16px;box-shadow:0 4px 16px rgba(0,0,0,.06);padding:20px;margin:auto 0}
+h1{font-size:1.5rem;text-align:center;margin-bottom:16px;letter-spacing:-0.5px}
+h2{font-size:1.15rem;margin-bottom:12px}
+.screen{display:none;animation:fade .25s ease-out}
+.screen.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.btn{display:block;width:100%;padding:14px;margin:10px 0;background:var(--p);color:#fff;border:none;border-radius:10px;font-size:1rem;font-weight:600;cursor:pointer;transition:.15s;text-align:center}
+.btn:hover{background:var(--ph)}
+.btn-sec{background:#64748b}.btn-sec:hover{background:#475569}
+.btn-dng{background:var(--e)}.btn-dng:hover{background:#b91c1c}
+.btn-suc{background:var(--s)}.btn-suc:hover{background:#15803d}
+.btn:disabled{background:#cbd5e1;color:#94a3b8;cursor:not-allowed;pointer-events:none}
+.stats{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:16px}
+.stats p{margin:6px 0;font-size:1rem;display:flex;justify-content:between;align-items:center;justify-content:space-between}
+.stats strong{color:var(--t)}
+.prog{width:100%;background:#e2e8f0;border-radius:99px;height:8px;margin-bottom:16px;overflow:hidden}
+.prog-bar{height:100%;background:var(--p);transition:width .2s ease}
+.q-text{font-size:1.1rem;font-weight:600;margin-bottom:16px;line-height:1.4}
+.opts{display:flex;flex-direction:column;gap:10px}
+.opt{padding:14px 16px;border:2px solid #e2e8f0;border-radius:10px;cursor:pointer;background:#fff;text-align:left;font-size:.95rem;transition:.1s;line-height:1.3}
+.opt:hover:not(.dis){border-color:var(--p);background:#f0f5ff}
+.opt.ok{background:#dcfce7;border-color:var(--s);color:#14532d;font-weight:500}
+.opt.no{background:#fee2e2;border-color:var(--e);color:#7f1d1d}
+.opt.dis{cursor:default;pointer-events:none}
+.chr-list{list-style:none;display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
+.chr-item{padding:14px;background:#fff;border:2px solid #e2e8f0;border-radius:10px;display:flex;align-items:center;gap:12px;cursor:grab;user-select:none;-webkit-user-select:none}
+.chr-item:active{cursor:grabbing}
+.chr-item.drag{opacity:.3}
+.chr-item.over{border-color:var(--p);background:#f0f5ff}
+.chr-item.ok{background:#dcfce7;border-color:var(--s)}
+.chr-item.no{background:#fee2e2;border-color:var(--e)}
+.chr-num{font-weight:700;color:var(--p);min-width:20px;font-size:1.05rem}
+.chr-arrows{margin-left:auto;display:flex;gap:6px}
+.chr-arrows button{padding:6px 12px;border:1px solid #cbd5e1;background:#f8fafc;border-radius:6px;cursor:pointer;font-size:1rem;font-weight:600;touch-action:manipulation}
+.chr-arrows button:hover{background:#e2e8f0}
+.chr-date{display:none;margin-top:4px;font-size:.85rem;color:var(--ts);font-style:italic}
+.chr-date.show{display:block}
+.chr-controls{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.chr-controls .btn{flex:1;min-width:140px;margin:0}
+.feedback{padding:12px;border-radius:10px;margin-top:14px;font-weight:600;text-align:center;font-size:.95rem}
+.feedback.ok{background:#dcfce7;color:#14532d}
+.feedback.no{background:#fee2e2;color:#7f1d1d}
+.hint{font-size:.85rem;color:var(--ts);text-align:center;margin:4px 0 12px 0;line-height:1.3}
+
+/* Улучшенные адаптивные флеш-карточки */
+.flashcard-wrapper {
+  perspective: 1000px;
+  margin: 16px auto;
+  width: 100%;
+  height: 360px;
+  position: relative;
+}
+.flashcard {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.flashcard.flipped {
+  transform: rotateY(180deg);
+}
+.card-face {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  border: 2px solid #cbd5e1;
+  background: #ffffff;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+}
+.card-front {
+  color: var(--t);
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+.card-front h3 {
+  color: var(--p);
+  font-size: 1.25rem;
+  line-height: 1.4;
+}
+.card-back {
+  color: var(--t);
+  transform: rotateY(180deg);
+  background: #f8fafc;
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+.card-back h4 {
+  color: var(--s);
+  margin-bottom: 10px;
+  border-bottom: 2px solid #e2e8f0;
+  width: 100%;
+  padding-bottom: 4px;
+  font-size: 1.1rem;
+}
+.card-body-scroll {
+  width: 100%;
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 4px;
+  font-size: 0.93rem;
+  line-height: 1.45;
+  -webkit-overflow-scrolling: touch; /* Плавный скролл на iOS */
+}
+.card-body-scroll ul, .card-body-scroll ol {
+  padding-left: 20px;
+  margin-top: 6px;
+}
+.card-body-scroll li {
+  margin-bottom: 6px;
+}
+.card-nav {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+.card-nav .btn {
+  margin: 0;
+  flex: 1;
+}
+
+@media(max-width:480px){
+  body{padding:8px}
+  .wrap{border-radius:12px;padding:16px}
+  h1{font-size:1.35rem}
+  .q-text{font-size:1rem}
+  .opt{padding:12px;font-size:.9rem}
+  .flashcard-wrapper{height:380px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div id="home" class="screen active">
+  <h1>📚 Исторический тренажёр</h1>
+  <div class="stats">
+    <p>Всего ответов: <strong id="s-total">0</strong></p>
+    <p>Правильных: <strong id="s-ok" style="color:var(--s)">0</strong></p>
+    <p>Неправильных: <strong id="s-no" style="color:var(--e)">0</strong></p>
+    <p>Точность: <strong id="s-acc">0%</strong></p>
+  </div>
+  <button class="btn" onclick="startTest('all')">🎯 Начать тест (все вопросы)</button>
+  <button class="btn btn-sec" onclick="startTest('choice')">📝 Только выбор ответа</button>
+  <button class="btn btn-sec" onclick="startTest('chr')">📅 Только хронология</button>
+  <button class="btn btn-suc" id="btn-mist" onclick="startTest('mistakes')">🔁 Ошибки (<span id="mist-count">0</span>)</button>
+  <button class="btn" style="background:#8b5cf6;" onclick="startCards()">🎴 Развернутые вопросы (Карточки)</button>
+  <button class="btn btn-dng" onclick="resetStats()">🗑 Сбросить статистику</button>
+</div>
+
+<div id="test" class="screen">
+  <div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:0.9rem">
+    <span id="q-counter" style="font-weight:600;color:var(--ts)">Вопрос 1 / 10</span>
+    <span style="cursor:pointer;color:var(--e);font-weight:700" onclick="goHome()">✕ Выйти</span>
+  </div>
+  <div class="prog"><div class="prog-bar" id="prog-bar"></div></div>
+  <div id="q-area"></div>
+</div>
+
+<div id="cards-screen" class="screen">
+  <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:0.9rem">
+    <span id="card-counter" style="font-weight:600;color:var(--ts)">Карточка 1 / 5</span>
+    <span style="cursor:pointer;color:var(--e);font-weight:700" onclick="goHome()">✕ Выйти</span>
+  </div>
+  <div class="hint">Нажмите на карточку, чтобы перевернуть её</div>
+  
+  <div class="flashcard-wrapper" onclick="toggleCard()">
+    <div class="flashcard" id="fcard">
+      <div class="card-face card-front">
+        <h3 id="card-q-text">Вопрос...</h3>
+        <span style="margin-top:24px; font-size:0.8rem; color:var(--ts); background:#e2e8f0; padding:4px 10px; border-radius:20px">🔄 Нажмите для переворота</span>
+      </div>
+      <div class="card-face card-back" onclick="event.stopPropagation()">
+        <h4>📝 Ответ:</h4>
+        <div class="card-body-scroll" id="card-a-text">Ответ...</div>
+        <span style="align-self:center; margin-top:6px; font-size:0.8rem; color:var(--ts); cursor:pointer" onclick="toggleCard()">🔄 Назад к вопросу</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-nav">
+    <button class="btn btn-sec" onclick="prevCard(event)">← Назад</button>
+    <button class="btn" onclick="nextCard(event)">Вперед →</button>
+  </div>
+</div>
+
+<div id="done" class="screen">
+  <h1 id="done-title">✅ Тест завершён!</h1>
+  <div class="stats">
+    <p>Правильных: <strong id="d-ok" style="color:var(--s)">0</strong></p>
+    <p>Неправильных: <strong id="d-no" style="color:var(--e)">0</strong></p>
+    <p>Точность: <strong id="d-acc">0%</strong></p>
+  </div>
+  <button class="btn" onclick="goHome()">🏠 На главную</button>
+</div>
+
+</div>
+
+<script>
+// ============ БАЗА ВОПРОСОВ ============
+const Q = [
+// === ВЫБОР ОТВЕТА ===
+{id:'c1',type:'choice',q:'Что было характерно для НЭПа?',opts:['Полное отсутствие рыночных отношений','Частичная денационализация предприятий, передача их в частные руки','Полная национализация предприятий','Прекращение экспорта продукции'],a:1},
+{id:'c2',type:'choice',q:'Какое направление промышленности развивали Берия и Милюков (Микоян)?',opts:['Тяжёлая промышленность','Лёгкая промышленность','Химическая промышленность','Электронная промышленность'],a:0},
+{id:'c3',type:'choice',q:'Что такое Коминтерн?',opts:['Экономическая помощь социалистическим странам','Борьба за мир во всём мире','Разжигание мировой революции','Создание всемирного профсоюза'],a:2},
+{id:'c4',type:'choice',q:'В каком году СССР вторгся в Финляндию?',opts:['1941','1939','1938','1940'],a:1},
+{id:'c5',type:'choice',q:'Что было характерно для периода десталинизации?',opts:['Развитие тяжёлой промышленности','Усиление культа личности','Усиление репрессий','Реабилитация политзаключённых'],a:3},
+{id:'c6',type:'choice',q:'Что было характерно для правления Брежнева?',opts:['Экономический подъём','Политическая нестабильность','Стагнация','Начало перестройки'],a:2},
+{id:'c7',type:'choice',q:'В годы Гражданской войны Красную Армию возглавил:',opts:['Лев Троцкий','Иосиф Сталин','Михаил Фрунзе','Владимир Ленин'],a:0},
+{id:'c8',type:'choice',q:'Стремясь найти средства для индустриализации, советское руководство:',opts:['Сокращает экспорт хлеба','Проводит займы среди населения','Уменьшает оборонный сектор в экономике','Прекращает железнодорожное строительство'],a:1},
+{id:'c9',type:'choice',q:'В 1941 году в войну на стороне Германии против СССР вступила:',opts:['Италия','Япония','Финляндия','Венгрия'],a:2},
+{id:'c10',type:'choice',q:'На XX съезде КПСС Н.С. Хрущёв выступил с докладом о:',opts:['Коллективизации сельского хозяйства','Критике культа личности Сталина','Космической программе','Плане семилетки'],a:1},
+{id:'c11',type:'choice',q:'Реформы Косыгина в промышленности касались:',opts:['Увеличения производства тяжелой промышленности','Закрытия колхозов','Децентрализации управления / создания НПО','Сокращения количества предприятий'],a:2},
+{id:'c12',type:'choice',q:'Первой мерой радикального реформирования экономики правительством Е.Т. Гайдара стало:',opts:['Приватизация','Введение карточной системы распределения','Ускорение развития машиностроения','Либерализация цен'],a:3},
+{id:'c13',type:'choice',q:'Кто был правителем в 1990 году?',opts:['Леонид Брежнев','Михаил Горбачёв','Борис Ельцин','Андропов'],a:1},
+{id:'c14',type:'choice',q:'Громкое дело о репрессиях в 1940-1950-х годах:',opts:['Ленинградское дело','Дело врачей','Дело Берии','Московский процесс'],a:0},
+{id:'c15',type:'choice',q:'По Конституции 1936 года, высший исполнительный орган власти:',opts:['Президиум Верховного Совета','Совнарком','Политбюро','Совет Министров'],a:1},
+{id:'c16',type:'choice',q:'Название организации, созданной после Первой мировой войны:',opts:['Варшавский договор','НАТО','ООН','Лига Наций'],a:3},
+{id:'c17',type:'choice',q:'Кто возглавил Белую армию в годы Гражданской войны?',opts:['Лавр Корнилов','Александр Колчак','Пётр Врангель','Антон Деникин'],a:1},
+{id:'c18',type:'choice',q:'Что произошло после нападения Германии на Польшу?',opts:['Введение войск СССР в Польшу','Введение войск СССР в Прибалтику','Введение войск СССР в Румынию','Введение войск СССР в Финляндию'],a:0},
+{id:'c19',type:'choice',q:'Что было характерно для СССР в 1946-1952 годы?',opts:['Либерализация экономики','Увеличение производства потребительвых товаров','Новая волна репрессий','Десталинизация'],a:2},
+{id:'c20',type:'choice',q:'Год создания "брежневской" Конституции:',opts:['1936','1977','1965','1982'],a:1},
+{id:'c21',type:'choice',q:'Г. Маленков и Л. Берия были сторонниками восстановления экономики в 1945 году с приоритетом:',opts:['Сельского хозяйства','Лёгкой промышленности','Тяжёлой промышленности','Сферы услуг'],a:2},
+{id:'c22',type:'choice',q:'С термином "оттепель" связано:',opts:['Появление новых имён и направлений в культурной жизни','Принятие новой конституции СССР','Разрешение свободного въезда и выезда из СССР','Легализация новых политических партий'],a:0},
+{id:'c23',type:'choice',q:'В Советском Союзе диссидентами называли:',opts:['Злостных хулиганов','Агентов иностранной разведки','Борцов с "космополитизмом"','Борцов с существующим строем'],a:3},
+{id:'c24',type:'choice',q:'По Конституции 1993 года высшим органом законодательной власти в России стал:',opts:['Верховный Совет','Государственная Дума','Федеральное собрание','Съезд народных депутатов'],a:2},
+{id:'c25',type:'choice',q:'Крупнейшая стройка первых пятилеток:',opts:['ДнепроГЭС','КАМАЗ','БАМ','Целина'],a:0},
+{id:'c26',type:'choice',q:'Что предусматривала продовольственная диктатура в годы военного коммунизма?',opts:['Принудительное изъятие излишков','Введение натурального налога','Создание колхозов','Ликвидация помещичьих хозяйств'],a:0},
+{id:'c27',type:'choice',q:'Год создания первой Конституции СССР:',opts:['1918','1924','1936','1922'],a:1},
+{id:'c28',type:'choice',q:'Какую страну присоединил СССР в 1940 году?',opts:['Казахстан','Армения','Эстония','Грузия'],a:2},
+{id:'c29',type:'choice',q:'Почему коллективизация в 20-30-х годах имела успех?',opts:['Зажиточные крестьяне хотели разбогатеть','Успешная политика раздачи земель','Давление со стороны правительства','Упадок у крестьян из-за экономического спада'],a:2},
+{id:'c30',type:'choice',q:'Что характерно для политики ускорения?',opts:['Модернизация производства','Сворачивание реформ','Возврат к НЭПу','Приватизация'],a:0},
+{id:'c31',type:'choice',q:'В чём обвиняли космополитов?',opts:['Преклонение перед Западом','Шпионаж','Саботаж','Вредительство'],a:0},
+{id:'c32',type:'choice',q:'Какая аграрная реформа была при Хрущёве?',opts:['Ликвидация МТС','Раскулачивание','Введение продналога','Столыпинская реформа'],a:0},
+{id:'c33',type:'choice',q:'Период 1964–1982 годов:',opts:['Оттепель','Эпоха застоя','Перестройка','Военный коммунизм'],a:1},
+{id:'c34',type:'choice',q:'Экономическая реформа правительства Е. Гайдара в 1992 г. вошла в историю под названием:',opts:['Новое экономическое мышление','Дефолт','Экономический стресс','Шоковая терапия'],a:3},
+{id:'c35',type:'choice',q:'К периоду «холодной войны» относится:',opts:['Война в Корее 1950-1953 гг.','Пакт о ненападении СССР и Германии в 1939 г.','Война США в Ираке в 2003 г.','Договор об образовании Лиги Наций'],a:0},
+{id:'c36',type:'choice',q:'Согласно решению XIX конференции КПСС высшим органом государственной власти в СССР становится:',opts:['Съезд народных депутатов СССР','Государственная Дума СССР','Совет Министров СССР','Федеральное собрание'],a:0},
+{id:'c37',type:'choice',q:'В России сторонниками построения социалистической республики с опорой на пролетариат были:',opts:['Народники','Славянофилы','Марксисты','Западники'],a:2},
+{id:'c38',type:'choice',q:'На выборах в Учредительное собрание победу одержали:',opts:['Большевики','Меньшевики','Эсеры','Кадеты'],a:2},
+{id:'c39',type:'choice',q:'В соответствии с Версальским мирным договором 1919 года:',opts:['Эльзас и Лотарингия передавались Франции','Эльзас и Лотарингия передавались Германии','Провозглашалось создание объединенной Италии','Устанавливалось равенство тоннажа кораблей США и Великобритании'],a:0},
+{id:'c40',type:'choice',q:'Меры «военного коммунизма» в промышленности предусматривали:',opts:['Создание трудовых армий','Создание концернов','Создание совнархозов','Введение хозрасчета'],a:0},
+{id:'c41',type:'choice',q:'В третьей пятилетке (началась в 1939 г.) при подготовке к войне создавались:',opts:['Совнархозы','Заводы «дублеры»','Трудовые армии','Ложные заводы'],a:1},
+{id:'c42',type:'choice',q:'В 1941 году немецкие войска были:',opts:['Разгромлены под Смоленском','Окружены в Сталинграде','Разгромлены под Москвой','Разбиты в Ленинграде'],a:2},
+{id:'c43',type:'choice',q:'Во второй половине XIX века к России была присоединена:',opts:['Средняя Азия','Восточная Сибирь','Финляндия','Польша'],a:0},
+{id:'c44',type:'choice',q:'Идеологом консервативного течения в России второй половины XIX века был:',opts:['Лавров','Мартов','Чернышевский','Победоносцев'],a:3},
+{id:'c45',type:'choice',q:'В годы революции 1905-1907 годов произошло:',opts:['Морозовская стачка','Убийство Распутина','Всероссийская октябрьская политическая стачка','Корниловский мятеж'],a:2},
+{id:'c46',type:'choice',q:'В Первой мировой войне в Четвертном союзе на стороне Германии воевала:',opts:['Турция','Япония','Польша','Финляндия'],a:0},
+{id:'c47',type:'choice',q:'В 1939 году за агрессию против Финляндии СССР был:',opts:['Принят в союз с Германией','Исключен из ОВД','Исключен из Лиги Наций','Исключен из ООН'],a:2},
+{id:'c48',type:'choice',q:'Для стимулирования экономического развития СССР в годы перестройки было разрешено:',opts:['Приватизация предприятий','Экспроприация собственности буржуазии','Индивидуально-трудовая деятельность и свободная внешнеэкономическая деятельность','Введение карточной системы'],a:2},
+{id:'c49',type:'choice',q:'Российское руководство в 90-е годы развивало связи с Западом для:',opts:['Получения экономической помощи','Присоединения к НАТО','Получения секрета ядерной бомбы','Вхождения в ООН'],a:0},
+{id:'c50',type:'choice',q:'Какая главная цель стояла перед Новой Экономической Политикой (НЭП)?',opts:['Форсированный переход к коммунизму','Попытка восстановить разрушенное хозяйство и рынок через уступки частному сектору','Полное уничтожение товарно-денежных отношений','Немедленная коллективизация всех крестьян'],a:1},
+{id:'c51',type:'choice',q:'Что из перечисленного являлось одной из главных целей Косыгинской реформы 1965 года?',opts:['Повышение экономической самостоятельности предприятий и материальная стимуляция','Ликвидация системы пятилетнего планирования','Полный отказ от государственной монополии внешней торговли','Переход к децентрализованным территориальным совнархозам'],a:0},
+{id:'c52',type:'choice',q:'Какая важная мера управления была предпринята в ходе реформы Косыгина?',opts:['Введение продовольственной диктатуры','Ликвидация хрущёвских совнархозов и возврат к министерствам','Переход к полной приватизации лёгкой промышленности','Организация трудовых армий'],a:1},
+{id:'c53',type:'choice',q:'Какая проблема была одной из ключевых в международных отношениях России в 1-й половине XIX века?',opts:['Разрешение Карибского кризиса','Обострение «Восточного вопроса» и контроль над проливами','Противостояние ядерных держав','Борьба с блоком НАТО'],a:1},
+{id:'c54',type:'choice',q:'Что выступало главным глубинным фактором начала Холодной войны после 1945 года?',opts:['Глобальное идеологическое противостояние систем капитализма и социализма','Попытки СССР войти в состав Лиги Наций','Разногласия по поводу условий Брестского мира','Реализация программы «500 дней»'],a:0},
+{id:'c55',type:'choice',q:'Что являлось характерной чертой экономического развития пореформенной России (2-я половина XIX в.)?',opts:['Полный застой в промышленности','Высокие темпы индустриализации, бум железнодорожного строительства и активное вмешательство государства','Абсолютное доминирование фермерских хозяйств без пережитков крепостничества','Отказ от привлечения иностранного капитала'],a:1},
+{id:'c56',type:'choice',q:'Что из перечисленного относится к начальному этапу Перестройки (1985-1986 гг.)?',opts:['Масштабная ваучерная приватизация','Концепция «Ускорения» социально-экономического развития и введение госприёмки','Переход на рыночные свободные цены («Шоковая терапия»)','Разрешение многопартийности'],a:1},
+
+// === ХРОНОЛОГИЯ ===
+{id:'h1',type:'chr',q:'Расставьте события ВОВ в хронологическом порядке:',ev:[
+  {n:'Сталинградская битва',d:'17 июля 1942 — 2 февраля 1943',t:1942.5},
+  {n:'Курская битва',d:'5 июля — 23 августа 1943',t:1943.5},
+  {n:'Операция «Багратион»',d:'23 июня — 29 августа 1944',t:1944.5},
+  {n:'Висло-Одерская операция',d:'12 января — 3 февраля 1945',t:1945.1}
+]},
+{id:'h2',type:'chr',q:'Расставьте события ВОВ в хронологическом порядке:',ev:[
+  {n:'Сталинградская битва',d:'17 июля 1942 — 2 февраля 1943',t:1942.5},
+  {n:'Курская битва',d:'5 июля — 23 августа 1943',t:1943.5},
+  {n:'Форсирование Днепра',d:'октябрь — декабрь 1943',t:1943.8},
+  {n:'Операция «Багратион»',d:'23 июня — 29 августа 1944',t:1944.5}
+]},
+{id:'h3',type:'chr',q:'Расставьте события в хронологическом порядке:',ev:[
+  {n:'Создание атомной бомбы в СССР',d:'1949 г.',t:1949},
+  {n:'Запуск первого искусственного спутника',d:'4 октября 1957 г.',t:1957.7},
+  {n:'Ввод войск в Афганистан',d:'25 декабря 1979 г.',t:1979.9},
+  {n:'Взрыв на Чернобыльской АЭС',d:'26 апреля 1986 г.',t:1986.3}
+]},
+{id:'h4',type:'chr',q:'Расставьте события конца СССР в хронологическом порядке:',ev:[
+  {n:'Принятие Конституции СССР (брежневской)',d:'1977 г.',t:1977},
+  {n:'Выборы президента РСФСР',d:'12 июня 1991 г.',t:1991.4},
+  {n:'Попытка захвата власти ГКЧП',d:'19-21 августа 1991 г.',t:1991.6},
+  {n:'Образование СНГ',d:'8 декабря 1991 г.',t:1991.9}
+]},
+{id:'h5',type:'chr',q:'Расставьте события ВОВ в хронологическом порядке:',ev:[
+  {n:'Смоленское сражение',d:'10 июля — 10... г.',t:1941.6},
+  {n:'Сталинградская битва',d:'1942-1943 гг.',t:1942.5},
+  {n:'Операция «Багратион»',d:'1944 г.',t:1944.5},
+  {n:'Висло-Одерская операция',d:'1945 г.',t:1945.1}
+]}
+];
+
+// ============ БАЗА КАРТОЧЕК (РАЗВЕРНУТЫЕ) ============
+const PRO_Q = [
+  {
+    q: "Назовите основные проявления \"Холодной войны\"",
+    a: `<ul>
+          <li><strong>1) Гонка вооружений и ядерное противостояние:</strong> Карибский кризис. Активное наращивание военного потенциала и ядерных арсеналов.</li>
+          <li><strong>2) Формирование военно-политических блоков:</strong> Создание НАТО (США и союзники) и ОВД (Организация Варшавского договора во главе с СССР).</li>
+          <li><strong>3) Глобальное идеологическое противостояние:</strong> Пропаганда преимуществ своего строя во всём мире.</li>
+          <li><strong>4) Космическая гонка:</strong> Соревнование в освоении космоса и технологиях.</li>
+        </ul>`
+  },
+  {
+    q: "В 1945-46 гг. в руководстве шла дискуссия о путях восстановления экономики СССР. Пути, аргументы и принятое решение.",
+    a: `<div>Рассматривалось два основных альтернативных направления:</div>
+        <ol style="margin-top:4px;">
+          <li><strong>Сторонники умеренного курса (Жданов, Вознесенский):</strong> Предполагали, что буржуазные страны начнут соперничать друг с другом за колонии, а СССР сможет стать рынком сбыта (упор на развитие лёгкой/пищевой промышленности и частичные послабления).</li>
+          <li><strong>Сторонники жёсткого курса (Сталин, Берия):</strong> Считали, что Запад во главе с США (обладающими ядерным оружием) может напасть на СССР. Требовали форсированного роста тяжёлой индустрии и ВПК.</li>
+        </ol>
+        <div style="margin-top:8px;"><strong>Итог:</strong> Был выбран жёсткий курс. Позже это привело к «Ленинградскому делу» и ликвидации его ключевых сторонников (расстрел Вознесенского).</div>`
+  },
+  {
+    q: "Основные цели и меры, предпринятые в \"Косыгинской реформе\"",
+    a: `<strong>Основные цели:</strong>
+        <ul>
+          <li>1) Повышение эффективности производства и производительности труда;</li>
+          <li>2) Переход от административных к экономическим методам управления;</li>
+          <li>3) Создание материальной заинтересованности работников.</li>
+        </ul>
+        <strong style="display:block;margin-top:6px;">Главные меры:</strong>
+        <ul>
+          <li>1) Переход на показатель объёма реализованной продукции (вместо валового);</li>
+          <li>2) Внедрение хозрасчёта и автономии предприятий;</li>
+          <li>3) Ликвидация территориальных совнархозов и возврат к отраслевым министерствам.</li>
+        </ul>`
+  },
+  {
+    q: "Характер и основные проблемы в международных отношениях 1-й половины XIX века",
+    a: `<ol>
+          <li>1) Функционирование Венской системы и создание Священного союза для борьбы с революциями;</li>
+          <li>2) Формирование антифранцузских коалиций в эпоху Наполеоновских войн;</li>
+          <li>3) Обострение «Восточного вопроса» (ослабление Османской империи, статус проливов Босфор и Дарданеллы);</li>
+          <li>4) Нарастание соперничества между Российской империей и Великобританией.</li>
+        </ol>`
+  },
+  {
+    q: "Назовите особенности экономического роста России в пореформенный период (XIX в.)",
+    a: `<ul>
+          <li>1) Бурные темпы промышленного переворота и массовое строительство железных дорог;</li>
+          <li>2) Выраженное отставание аграрного сектора (сохранение общины, выкупных платежей);</li>
+          <li>3) Огромная регулирующая и инвестиционная роль государства в экономике;</li>
+          <li>4) Быстрые процессы концентрации производства и появление монополий.</li>
+        </ul>`
+  },
+  {
+    q: "Причины Холодной войны (Объективные и субъективные)",
+    a: `<strong>Объективные:</strong>
+        <ul>
+          <li>1) Коренное различие идеологий (социалистическая и капиталистическая системы);</li>
+          <li>2) Стремление сверхдержав к геополитическому доминированию в послевоенном мире.</li>
+        </ul>
+        <strong style="display:block;margin-top:6px;">Субъективные:</strong>
+        <ul>
+          <li>Психологическая неготовность лидеров США и СССР к компромиссам, взаимное недоверие и подозрительность.</li>
+        </ul>`
+  },
+  {
+    q: "Причины поражения СССР в начальном периоде войны 1941-1942 гг.",
+    a: `<strong>Объективные:</strong>
+        <ul>
+          <li>Военная доктрина СССР строилась на наступательной концепции («на чужой территории, малой кровью»), армия была слабо подготовлена к долговременной стратегической обороне.</li>
+        </ul>
+        <strong style="display:block;margin-top:6px;">Субъективные:</strong>
+        <ul>
+          <li>1) Масштабные предвоенные репрессии в командном составе РККА;</li>
+          <li>2) Серьёзные просчёты высшего руководства в оценке сроков нападения и ведении первых оборонительных операций.</li>
+        </ul>`
+  },
+  {
+    q: "Цели и меры Новой Экономической Политики (НЭПа)",
+    a: `<strong>Главная цель:</strong> Преодоление глубокого политического и экономического кризиса, восстановление разрушенного хозяйства.
+        <strong style="display:block;margin-top:6px;">Меры:</strong>
+        <ul>
+          <li>1) Замена продразвёрстки фиксированным продналогом;</li>
+          <li>2) Допущение рыночных отношений, частной торговли и мелкого предпринимательства;</li>
+          <li>3) Частичная денационализация мелкой и средней промышленности, аренда предприятий.</li>
+        </ul>`
+  },
+  {
+    q: "Причины Гражданской войны в России",
+    a: `<strong>Объективные:</strong>
+        <ul>
+          <li>Радикальное изменение политического строя. Ущемление интересов зажиточного крестьянства, национализация земли и ликвидация частной собственности вызвали резкое сопротивление прежних элит.</li>
+        </ul>
+        <strong style="display:block;margin-top:6px;">Субъективные:</strong>
+        <ul>
+          <li>1) Заключение сепаратного Брестского мира с Германией, воспринятое патриотами как предательство;</li>
+          <li>2) Бескомпромиссная идеологическая позиция большевиков, ставка на диктатуру.</li>
+        </ul>`
+  },
+  {
+    q: "Меры и причины Перестройки. Итоги.",
+    a: `<strong>Причины:</strong> Стагнация в экономике («застой»), падение мировых цен на нефть, непомерные военные расходы из-за Холодной войны.
+        <strong style="display:block;margin-top:6px;">Основные меры:</strong>
+        <ol>
+          <li>1) Курс «Ускорения» (модернизация машиностроения, госприёмка);</li>
+          <li>2) Политика «Гласности» (демократизация, ослабление цензуры);</li>
+          <li>3) Экономические послабления (закон о кооперации, хозрасчёт, программа «500 дней»).</li>
+        </ol>
+        <strong style="display:block;margin-top:6px;">Итоги:</strong> Дестабилизация потребительского рынка, потеря управляемости экономикой, раскол внутри КПСС и, как следствие, дезинтеграция и распад СССР в 1991 году.`
+  }
+];
+
+// ============ ЛОГИКА ТРЕНАЖЕРА ============
+let stats=JSON.parse(localStorage.getItem('hist_stats')||'{"total":0,"ok":0,"mistakes":{}}');
+let curList=[],curIdx=0,sessionOk=0,sessionNo=0,answered=false,cardIdx=0;
+
+function save(){localStorage.setItem('hist_stats',JSON.stringify(stats))}
+function updHome(){
+  document.getElementById('s-total').textContent=stats.total;
+  document.getElementById('s-ok').textContent=stats.ok;
+  document.getElementById('s-no').textContent=stats.total-stats.ok;
+  document.getElementById('s-acc').textContent=(stats.total?Math.round(stats.ok/stats.total*100):0)+'%';
+  const mc=Object.keys(stats.mistakes).length;
+  document.getElementById('mist-count').textContent=mc;
+  document.getElementById('btn-mist').disabled=mc===0;
+}
+function resetStats(){if(confirm('Точно сбросить статистику?')){stats={total:0,ok:0,mistakes:{}};save();updHome()}}
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active')}
+function goHome(){show('home');updHome()}
+
+function startTest(mode){
+  let list=[];
+  if(mode==='all') list=[...Q];
+  else if(mode==='choice') list=Q.filter(x=>x.type==='choice');
+  else if(mode==='chr') list=Q.filter(x=>x.type==='chr');
+  else if(mode==='mistakes') list=Q.filter(x=>stats.mistakes[x.id]);
+  if(!list.length){alert('Нет вопросов!');return}
+  curList=list.sort(()=>Math.random()-0.5);curIdx=0;sessionOk=0;sessionNo=0;
+  show('test');render();
+}
+function render(){
+  answered=false;const q=curList[curIdx];
+  document.getElementById('q-counter').textContent=`Вопрос ${curIdx+1} / ${curList.length}`;
+  document.getElementById('prog-bar').style.width=(curIdx/curList.length*100)+'%';
+  const area=document.getElementById('q-area');
+  if(q.type==='choice') renderChoice(q,area);else renderChr(q,area);
+}
+function renderChoice(q,area){
+  let html=`<div class="q-text">${q.q}</div><div class="opts">`;
+  q.opts.forEach((o,i)=>{html+=`<div class="opt" onclick="pickOpt(${i})">${o}</div>`});
+  html+=`</div><div id="fb"></div><button class="btn" id="next-btn" style="display:none;margin-top:14px" onclick="nextQ()">Далее →</button>`;
+  area.innerHTML=html;
+}
+function pickOpt(i){
+  if(answered)return;answered=true;
+  const q=curList[curIdx], opts=document.querySelectorAll('.opt');
+  opts.forEach(o=>o.classList.add('dis'));
+  const correct=i===q.a;opts[q.a].classList.add('ok');if(!correct)opts[i].classList.add('no');
+  stats.total++;
+  if(correct){stats.ok++;sessionOk++;delete stats.mistakes[q.id];document.getElementById('fb').innerHTML='<div class="feedback ok">✓ Верно!</div>'}
+  else{sessionNo++;stats.mistakes[q.id]=1;document.getElementById('fb').innerHTML=`<div class="feedback no">✗ Неверно. Правильный ответ: ${opts[q.a].textContent}</div>`}
+  save();document.getElementById('next-btn').style.display='block';
+}
+
+// ХРОНОЛОГИЯ С КНОПКАМИ ПОД ТЕЛЕФОНЫ
+let chrItems=[];
+function renderChr(q,area){
+  chrItems=[...q.ev].sort(()=>Math.random()-0.5);
+  let html=`<div class="q-text">${q.q}</div><ul class="chr-list" id="chr-list"></ul>`;
+  html+=`<div class="chr-controls"><button class="btn btn-suc" id="chr-check" onclick="checkChr()">✓ Проверить</button><button class="btn" id="chr-next" style="display:none" onclick="nextQ()">Далее →</button></div><div id="fb"></div>`;
+  area.innerHTML=html;drawChrList(q);initDnD(q);
+}
+function drawChrList(q){
+  const list=document.getElementById('chr-list');if(!list)return;list.innerHTML='';
+  chrItems.forEach((e,i)=>{
+    const li=document.createElement('li');li.className='chr-item';li.draggable=true;li.dataset.i=i;
+    li.innerHTML=`<span class="chr-num">${i+1}</span><span style="flex:1"><span class="chr-text">${e.n}</span><span class="chr-date" id="date-${i}">${e.d}</span></span>
+      <span class="chr-arrows"><button onclick="moveUp(${i},event)">↑</button><button onclick="moveDown(${i},event)">↓</button></span>`;
+    list.appendChild(li);
+  });
+}
+function moveUp(i,e){e.stopPropagation();if(i===0||answered)return;[chrItems[i-1],chrItems[i]]=[chrItems[i],chrItems[i-1]];drawChrList();initDnD()}
+function moveDown(i,e){e.stopPropagation();if(i===chrItems.length-1||answered)return;[chrItems[i+1],chrItems[i]]=[chrItems[i],chrItems[i+1]];drawChrList();initDnD()}
+function initDnD(){
+  const list=document.getElementById('chr-list');if(!list)return;let dragIdx=null;
+  list.querySelectorAll('.chr-item').forEach(li=>{
+    li.addEventListener('dragstart',()=> {dragIdx=+li.dataset.i; li.classList.add('drag')});
+    li.addEventListener('dragend',()=>li.classList.remove('drag'));
+    li.addEventListener('dragover',e=>{e.preventDefault();li.classList.add('over')});
+    li.addEventListener('dragleave',()=>li.classList.remove('over'));
+    li.addEventListener('drop',e=>{
+      e.preventDefault();li.classList.remove('over');const to=+li.dataset.i;
+      if(dragIdx===null||dragIdx===to)return;const [m]=chrItems.splice(dragIdx,1);chrItems.splice(to,0,m);drawChrList();initDnD();
+    });
+  });
+}
+function checkChr(){
+  if(answered)return;answered=true;
+  const q=curList[curIdx], correct=[...q.ev].sort((a,b)=>a.t-b.t);let allOk=true;
+  document.querySelectorAll('#chr-list .chr-item').forEach((li,i)=>{
+    if(chrItems[i].n===correct[i].n)li.classList.add('ok');else{li.classList.add('no');allOk=false}
+    document.getElementById('date-'+i).classList.add('show');
+  });
+  stats.total++;
+  if(allOk){stats.ok++;sessionOk++;delete stats.mistakes[q.id];document.getElementById('fb').innerHTML='<div class="feedback ok">✓ Всё верно!</div>'}
+  else{sessionNo++;stats.mistakes[q.id]=1;document.getElementById('fb').innerHTML=`<div class="feedback no">✗ Есть ошибки. Порядок: ${correct.map(e=>e.n).join(' → ')}</div>`}
+  save();document.getElementById('chr-check').style.display='none';document.getElementById('chr-next').style.display='block';
+  document.querySelectorAll('#chr-list button').forEach(b=>b.disabled=true);
+}
+function nextQ(){curIdx++;if(curIdx>=curList.length){show('done');document.getElementById('d-ok').textContent=sessionOk;document.getElementById('d-no').textContent=sessionNo;document.getElementById('d-acc').textContent=(sessionOk+sessionNo?Math.round(sessionOk/(sessionOk+sessionNo)*100):0)+'%'}else render()}
+
+// КАРТОЧКИ
+function startCards(){cardIdx=0;show('cards-screen');renderCard()}
+function renderCard(){
+  document.getElementById('fcard').classList.remove('flipped');
+  const q=PRO_Q[cardIdx];
+  document.getElementById('card-counter').textContent=`Карточка ${cardIdx+1} / ${PRO_Q.length}`;
+  document.getElementById('card-q-text').textContent=q.q;
+  document.getElementById('card-a-text').innerHTML=q.a;
+  document.querySelector('.card-body-scroll').scrollTop = 0; // скролл вверх при смене карточки
+}
+function toggleCard(){document.getElementById('fcard').classList.toggle('flipped')}
+function nextCard(e){e.stopPropagation();if(cardIdx<PRO_Q.length-1){cardIdx++;renderCard()}else{alert('Все карточки пройдены!');goHome()}}
+function prevCard(e){e.stopPropagation();if(cardIdx>0){cardIdx--;renderCard()}}
+
+updHome();
+</script>
+</body>
+</html>
