@@ -268,7 +268,20 @@ function updHome(){
   document.getElementById('btn-mist').disabled=mc===0;
 }
 function resetStats(){if(confirm('Сбросить статистику?')){stats={total:0,ok:0,mistakes:{}};save();updHome()}}
-function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active')}
+function show(id){
+  // Скрываем все экраны
+  const screens = document.querySelectorAll('.screen');
+  screens.forEach(screen => {
+    screen.classList.remove('active');
+  });
+  // Показываем нужный экран
+  const target = document.getElementById(id);
+  if(target) {
+    target.classList.add('active');
+  } else {
+    console.error('Экран с id ' + id + ' не найден');
+  }
+}
 function goHome(){show('home');updHome()}
 
 function startTest(mode){
@@ -367,16 +380,18 @@ function nextQ(){curIdx++;if(curIdx>=curList.length){show('done');document.getEl
 // Карточки
 function startCards(){cardIdx=0;show('cards-screen');renderCard()}
 function renderCard(){
-  document.getElementById('fcard').classList.remove('flipped');
+  const fcard = document.getElementById('fcard');
+  if(fcard) fcard.classList.remove('flipped');
   const q=PRO_Q[cardIdx];
   document.getElementById('card-counter').textContent=`Карточка ${cardIdx+1} / ${PRO_Q.length}`;
   document.getElementById('card-q-text').textContent=q.q;
   document.getElementById('card-a-text').innerHTML=q.a;
-  document.querySelector('.card-body-scroll').scrollTop = 0;
+  const scrollDiv = document.querySelector('.card-body-scroll');
+  if(scrollDiv) scrollDiv.scrollTop = 0;
 }
-function toggleCard(){document.getElementById('fcard').classList.toggle('flipped')}
-function nextCard(e){e.stopPropagation();if(cardIdx<PRO_Q.length-1){cardIdx++;renderCard()}else{alert('Все карточки пройдены!');goHome()}}
-function prevCard(e){e.stopPropagation();if(cardIdx>0){cardIdx--;renderCard()}}
+function toggleCard(){const fcard = document.getElementById('fcard'); if(fcard) fcard.classList.toggle('flipped');}
+function nextCard(e){if(e) e.stopPropagation();if(cardIdx<PRO_Q.length-1){cardIdx++;renderCard()}else{alert('Все карточки пройдены!');goHome()}}
+function prevCard(e){if(e) e.stopPropagation();if(cardIdx>0){cardIdx--;renderCard()}}
 
 updHome();
 </script>
